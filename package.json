@@ -4,7 +4,11 @@
   "description": "Riding the Gravy Train emulator EA1",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "miaus": "run-script-os",
+    "purrs": "run-script-os",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "miaus:default": "npm run purrs",
+    "purrs:default": "echo \"christelle <3\""
   },
   "repository": {
     "type": "git",
@@ -21,6 +25,7 @@
   },
   "homepage": "https://github.com/doctor-amaton/rgt#readme",
   "devDependencies": {
+    "@dr.amaton/run-script-os": "^1.1.1",
     "eslint": "^6.3.0",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.18.2",
