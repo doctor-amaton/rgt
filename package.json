@@ -1,0 +1,30 @@
+{
+  "name": "rgt",
+  "version": "1.0.0",
+  "description": "Riding the Gravy Train emulator EA1",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/doctor-amaton/rgt.git"
+  },
+  "keywords": [
+    "gameboy",
+    "emulator"
+  ],
+  "author": "Dr. Amatón",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/doctor-amaton/rgt/issues"
+  },
+  "homepage": "https://github.com/doctor-amaton/rgt#readme",
+  "devDependencies": {
+    "eslint": "^6.3.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "webpack": "^4.39.3",
+    "webpack-cli": "^3.3.7"
+  }
+}
