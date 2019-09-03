@@ -29,11 +29,20 @@ const initial = {
   M: 0,
   T: 0,
 
+
+  /**
+   * 8-bit signed counter
+   */
+  R: 0,
+
   /**
    * Unknown for now
    */
-  R: 0,
   I: 0,
+
+  /**
+   * Disable all interrupts (Interrupt Master Enable)
+   */
   IME: 0,
 };
 
@@ -56,9 +65,10 @@ export default function CPU() {
     commands: [],
 
     /**
-     * Instruction function array
+     * Execution maps
      */
-    instructions: [],
+    map: [],
+    cbmap: [],
 
     /**
      * Elapsed times
@@ -89,323 +99,604 @@ export default function CPU() {
       this.mmu = mmu || new MMU();
 
       /**
-       * Init the instruction function array
-       */
-      this.instructions = [
-        this.ADD_A_E,
-        this.CP_A_B,
-        this.PUSH_B_C,
-        this.POP_H_L,
-        this.LD_A_MEM,
-        this.NOP,
-      ];
-
-      /**
-       * Init the CB map
+       * Init the CB map and regular map
        */
       this.cbmap = [
         // CB00
-        this._ops.RLCr_b,
-        this._ops.RLCr_c,
-        this._ops.RLCr_d,
-        this._ops.RLCr_e,
-        this._ops.RLCr_h,
-        this._ops.RLCr_l,
-        this._ops.RLCHL,
-        this._ops.RLCr_a,
-        this._ops.RRCr_b,
-        this._ops.RRCr_c,
-        this._ops.RRCr_d,
-        this._ops.RRCr_e,
-        this._ops.RRCr_h,
-        this._ops.RRCr_l,
-        this._ops.RRCHL,
-        this._ops.RRCr_a,
+        this.instructions.RLCr_b,
+        this.instructions.RLCr_c,
+        this.instructions.RLCr_d,
+        this.instructions.RLCr_e,
+        this.instructions.RLCr_h,
+        this.instructions.RLCr_l,
+        this.instructions.RLCHL,
+        this.instructions.RLCr_a,
+        this.instructions.RRCr_b,
+        this.instructions.RRCr_c,
+        this.instructions.RRCr_d,
+        this.instructions.RRCr_e,
+        this.instructions.RRCr_h,
+        this.instructions.RRCr_l,
+        this.instructions.RRCHL,
+        this.instructions.RRCr_a,
 
         // CB10
-        this._ops.RLr_b,
-        this._ops.RLr_c,
-        this._ops.RLr_d,
-        this._ops.RLr_e,
-        this._ops.RLr_h,
-        this._ops.RLr_l,
-        this._ops.RLHL,
-        this._ops.RLr_a,
-        this._ops.RRr_b,
-        this._ops.RRr_c,
-        this._ops.RRr_d,
-        this._ops.RRr_e,
-        this._ops.RRr_h,
-        this._ops.RRr_l,
-        this._ops.RRHL,
-        this._ops.RRr_a,
+        this.instructions.RLr_b,
+        this.instructions.RLr_c,
+        this.instructions.RLr_d,
+        this.instructions.RLr_e,
+        this.instructions.RLr_h,
+        this.instructions.RLr_l,
+        this.instructions.RLHL,
+        this.instructions.RLr_a,
+        this.instructions.RRr_b,
+        this.instructions.RRr_c,
+        this.instructions.RRr_d,
+        this.instructions.RRr_e,
+        this.instructions.RRr_h,
+        this.instructions.RRr_l,
+        this.instructions.RRHL,
+        this.instructions.RRr_a,
 
         // CB20
-        this._ops.SLAr_b,
-        this._ops.SLAr_c,
-        this._ops.SLAr_d,
-        this._ops.SLAr_e,
-        this._ops.SLAr_h,
-        this._ops.SLAr_l,
-        this._ops.XX,
-        this._ops.SLAr_a,
-        this._ops.SRAr_b,
-        this._ops.SRAr_c,
-        this._ops.SRAr_d,
-        this._ops.SRAr_e,
-        this._ops.SRAr_h,
-        this._ops.SRAr_l,
-        this._ops.XX,
-        this._ops.SRAr_a,
+        this.instructions.SLAr_b,
+        this.instructions.SLAr_c,
+        this.instructions.SLAr_d,
+        this.instructions.SLAr_e,
+        this.instructions.SLAr_h,
+        this.instructions.SLAr_l,
+        this.instructions.XX,
+        this.instructions.SLAr_a,
+        this.instructions.SRAr_b,
+        this.instructions.SRAr_c,
+        this.instructions.SRAr_d,
+        this.instructions.SRAr_e,
+        this.instructions.SRAr_h,
+        this.instructions.SRAr_l,
+        this.instructions.XX,
+        this.instructions.SRAr_a,
 
         // CB30
-        this._ops.SWAPr_b,
-        this._ops.SWAPr_c,
-        this._ops.SWAPr_d,
-        this._ops.SWAPr_e,
-        this._ops.SWAPr_h,
-        this._ops.SWAPr_l,
-        this._ops.XX,
-        this._ops.SWAPr_a,
-        this._ops.SRLr_b,
-        this._ops.SRLr_c,
-        this._ops.SRLr_d,
-        this._ops.SRLr_e,
-        this._ops.SRLr_h,
-        this._ops.SRLr_l,
-        this._ops.XX,
-        this._ops.SRLr_a,
+        this.instructions.SWAPr_b,
+        this.instructions.SWAPr_c,
+        this.instructions.SWAPr_d,
+        this.instructions.SWAPr_e,
+        this.instructions.SWAPr_h,
+        this.instructions.SWAPr_l,
+        this.instructions.XX,
+        this.instructions.SWAPr_a,
+        this.instructions.SRLr_b,
+        this.instructions.SRLr_c,
+        this.instructions.SRLr_d,
+        this.instructions.SRLr_e,
+        this.instructions.SRLr_h,
+        this.instructions.SRLr_l,
+        this.instructions.XX,
+        this.instructions.SRLr_a,
 
         // CB40
-        this._ops.BIT0b,
-        this._ops.BIT0c,
-        this._ops.BIT0d,
-        this._ops.BIT0e,
-        this._ops.BIT0h,
-        this._ops.BIT0l,
-        this._ops.BIT0m,
-        this._ops.BIT0a,
-        this._ops.BIT1b,
-        this._ops.BIT1c,
-        this._ops.BIT1d,
-        this._ops.BIT1e,
-        this._ops.BIT1h,
-        this._ops.BIT1l,
-        this._ops.BIT1m,
-        this._ops.BIT1a,
+        this.instructions.BIT0b,
+        this.instructions.BIT0c,
+        this.instructions.BIT0d,
+        this.instructions.BIT0e,
+        this.instructions.BIT0h,
+        this.instructions.BIT0l,
+        this.instructions.BIT0m,
+        this.instructions.BIT0a,
+        this.instructions.BIT1b,
+        this.instructions.BIT1c,
+        this.instructions.BIT1d,
+        this.instructions.BIT1e,
+        this.instructions.BIT1h,
+        this.instructions.BIT1l,
+        this.instructions.BIT1m,
+        this.instructions.BIT1a,
 
         // CB50
-        this._ops.BIT2b,
-        this._ops.BIT2c,
-        this._ops.BIT2d,
-        this._ops.BIT2e,
-        this._ops.BIT2h,
-        this._ops.BIT2l,
-        this._ops.BIT2m,
-        this._ops.BIT2a,
-        this._ops.BIT3b,
-        this._ops.BIT3c,
-        this._ops.BIT3d,
-        this._ops.BIT3e,
-        this._ops.BIT3h,
-        this._ops.BIT3l,
-        this._ops.BIT3m,
-        this._ops.BIT3a,
+        this.instructions.BIT2b,
+        this.instructions.BIT2c,
+        this.instructions.BIT2d,
+        this.instructions.BIT2e,
+        this.instructions.BIT2h,
+        this.instructions.BIT2l,
+        this.instructions.BIT2m,
+        this.instructions.BIT2a,
+        this.instructions.BIT3b,
+        this.instructions.BIT3c,
+        this.instructions.BIT3d,
+        this.instructions.BIT3e,
+        this.instructions.BIT3h,
+        this.instructions.BIT3l,
+        this.instructions.BIT3m,
+        this.instructions.BIT3a,
 
         // CB60
-        this._ops.BIT4b,
-        this._ops.BIT4c,
-        this._ops.BIT4d,
-        this._ops.BIT4e,
-        this._ops.BIT4h,
-        this._ops.BIT4l,
-        this._ops.BIT4m,
-        this._ops.BIT4a,
-        this._ops.BIT5b,
-        this._ops.BIT5c,
-        this._ops.BIT5d,
-        this._ops.BIT5e,
-        this._ops.BIT5h,
-        this._ops.BIT5l,
-        this._ops.BIT5m,
-        this._ops.BIT5a,
+        this.instructions.BIT4b,
+        this.instructions.BIT4c,
+        this.instructions.BIT4d,
+        this.instructions.BIT4e,
+        this.instructions.BIT4h,
+        this.instructions.BIT4l,
+        this.instructions.BIT4m,
+        this.instructions.BIT4a,
+        this.instructions.BIT5b,
+        this.instructions.BIT5c,
+        this.instructions.BIT5d,
+        this.instructions.BIT5e,
+        this.instructions.BIT5h,
+        this.instructions.BIT5l,
+        this.instructions.BIT5m,
+        this.instructions.BIT5a,
 
         // CB70
-        this._ops.BIT6b,
-        this._ops.BIT6c,
-        this._ops.BIT6d,
-        this._ops.BIT6e,
-        this._ops.BIT6h,
-        this._ops.BIT6l,
-        this._ops.BIT6m,
-        this._ops.BIT6a,
-        this._ops.BIT7b,
-        this._ops.BIT7c,
-        this._ops.BIT7d,
-        this._ops.BIT7e,
-        this._ops.BIT7h,
-        this._ops.BIT7l,
-        this._ops.BIT7m,
-        this._ops.BIT7a,
+        this.instructions.BIT6b,
+        this.instructions.BIT6c,
+        this.instructions.BIT6d,
+        this.instructions.BIT6e,
+        this.instructions.BIT6h,
+        this.instructions.BIT6l,
+        this.instructions.BIT6m,
+        this.instructions.BIT6a,
+        this.instructions.BIT7b,
+        this.instructions.BIT7c,
+        this.instructions.BIT7d,
+        this.instructions.BIT7e,
+        this.instructions.BIT7h,
+        this.instructions.BIT7l,
+        this.instructions.BIT7m,
+        this.instructions.BIT7a,
 
         // CB80
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CB90
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CBA0
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CBB0
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CBC0
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CBD0
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CBE0
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
 
         // CBF0
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX,
-        this._ops.XX
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX
+      ];
+      this.map = [
+        // 00
+        this.instructions.NOP,
+        this.instructions.LDBCnn,
+        this.instructions.LDBCmA,
+        this.instructions.INCBC,
+        this.instructions.INCr_b,
+        this.instructions.DECr_b,
+        this.instructions.LDrn_b,
+        this.instructions.RLCA,
+        this.instructions.LDmmSP,
+        this.instructions.ADDHLBC,
+        this.instructions.LDABCm,
+        this.instructions.DECBC,
+        this.instructions.INCr_c,
+        this.instructions.DECr_c,
+        this.instructions.LDrn_c,
+        this.instructions.RRCA,
+
+        // 10
+        this.instructions.DJNZn,
+        this.instructions.LDDEnn,
+        this.instructions.LDDEmA,
+        this.instructions.INCDE,
+        this.instructions.INCr_d,
+        this.instructions.DECr_d,
+        this.instructions.LDrn_d,
+        this.instructions.RLA,
+        this.instructions.JRn,
+        this.instructions.ADDHLDE,
+        this.instructions.LDADEm,
+        this.instructions.DECDE,
+        this.instructions.INCr_e,
+        this.instructions.DECr_e,
+        this.instructions.LDrn_e,
+        this.instructions.RRA,
+
+        // 20
+        this.instructions.JRNZn,
+        this.instructions.LDHLnn,
+        this.instructions.LDHLIA,
+        this.instructions.INCHL,
+        this.instructions.INCr_h,
+        this.instructions.DECr_h,
+        this.instructions.LDrn_h,
+        this.instructions.XX,
+        this.instructions.JRZn,
+        this.instructions.ADDHLHL,
+        this.instructions.LDAHLI,
+        this.instructions.DECHL,
+        this.instructions.INCr_l,
+        this.instructions.DECr_l,
+        this.instructions.LDrn_l,
+        this.instructions.CPL,
+
+        // 30
+        this.instructions.JRNCn,
+        this.instructions.LDSPnn,
+        this.instructions.LDHLDA,
+        this.instructions.INCSP,
+        this.instructions.INCHLm,
+        this.instructions.DECHLm,
+        this.instructions.LDHLmn,
+        this.instructions.SCF,
+        this.instructions.JRCn,
+        this.instructions.ADDHLSP,
+        this.instructions.LDAHLD,
+        this.instructions.DECSP,
+        this.instructions.INCr_a,
+        this.instructions.DECr_a,
+        this.instructions.LDrn_a,
+        this.instructions.CCF,
+
+        // 40
+        this.instructions.LDrr_bb,
+        this.instructions.LDrr_bc,
+        this.instructions.LDrr_bd,
+        this.instructions.LDrr_be,
+        this.instructions.LDrr_bh,
+        this.instructions.LDrr_bl,
+        this.instructions.LDrHLm_b,
+        this.instructions.LDrr_ba,
+        this.instructions.LDrr_cb,
+        this.instructions.LDrr_cc,
+        this.instructions.LDrr_cd,
+        this.instructions.LDrr_ce,
+        this.instructions.LDrr_ch,
+        this.instructions.LDrr_cl,
+        this.instructions.LDrHLm_c,
+        this.instructions.LDrr_ca,
+
+        // 50
+        this.instructions.LDrr_db,
+        this.instructions.LDrr_dc,
+        this.instructions.LDrr_dd,
+        this.instructions.LDrr_de,
+        this.instructions.LDrr_dh,
+        this.instructions.LDrr_dl,
+        this.instructions.LDrHLm_d,
+        this.instructions.LDrr_da,
+        this.instructions.LDrr_eb,
+        this.instructions.LDrr_ec,
+        this.instructions.LDrr_ed,
+        this.instructions.LDrr_ee,
+        this.instructions.LDrr_eh,
+        this.instructions.LDrr_el,
+        this.instructions.LDrHLm_e,
+        this.instructions.LDrr_ea,
+
+        // 60
+        this.instructions.LDrr_hb,
+        this.instructions.LDrr_hc,
+        this.instructions.LDrr_hd,
+        this.instructions.LDrr_he,
+        this.instructions.LDrr_hh,
+        this.instructions.LDrr_hl,
+        this.instructions.LDrHLm_h,
+        this.instructions.LDrr_ha,
+        this.instructions.LDrr_lb,
+        this.instructions.LDrr_lc,
+        this.instructions.LDrr_ld,
+        this.instructions.LDrr_le,
+        this.instructions.LDrr_lh,
+        this.instructions.LDrr_ll,
+        this.instructions.LDrHLm_l,
+        this.instructions.LDrr_la,
+
+        // 70
+        this.instructions.LDHLmr_b,
+        this.instructions.LDHLmr_c,
+        this.instructions.LDHLmr_d,
+        this.instructions.LDHLmr_e,
+        this.instructions.LDHLmr_h,
+        this.instructions.LDHLmr_l,
+        this.instructions.HALT,
+        this.instructions.LDHLmr_a,
+        this.instructions.LDrr_ab,
+        this.instructions.LDrr_ac,
+        this.instructions.LDrr_ad,
+        this.instructions.LDrr_ae,
+        this.instructions.LDrr_ah,
+        this.instructions.LDrr_al,
+        this.instructions.LDrHLm_a,
+        this.instructions.LDrr_aa,
+
+        // 80
+        this.instructions.ADDr_b,
+        this.instructions.ADDr_c,
+        this.instructions.ADDr_d,
+        this.instructions.ADDr_e,
+        this.instructions.ADDr_h,
+        this.instructions.ADDr_l,
+        this.instructions.ADDHL,
+        this.instructions.ADDr_a,
+        this.instructions.ADCr_b,
+        this.instructions.ADCr_c,
+        this.instructions.ADCr_d,
+        this.instructions.ADCr_e,
+        this.instructions.ADCr_h,
+        this.instructions.ADCr_l,
+        this.instructions.ADCHL,
+        this.instructions.ADCr_a,
+
+        // 90
+        this.instructions.SUBr_b,
+        this.instructions.SUBr_c,
+        this.instructions.SUBr_d,
+        this.instructions.SUBr_e,
+        this.instructions.SUBr_h,
+        this.instructions.SUBr_l,
+        this.instructions.SUBHL,
+        this.instructions.SUBr_a,
+        this.instructions.SBCr_b,
+        this.instructions.SBCr_c,
+        this.instructions.SBCr_d,
+        this.instructions.SBCr_e,
+        this.instructions.SBCr_h,
+        this.instructions.SBCr_l,
+        this.instructions.SBCHL,
+        this.instructions.SBCr_a,
+
+        // A0
+        this.instructions.ANDr_b,
+        this.instructions.ANDr_c,
+        this.instructions.ANDr_d,
+        this.instructions.ANDr_e,
+        this.instructions.ANDr_h,
+        this.instructions.ANDr_l,
+        this.instructions.ANDHL,
+        this.instructions.ANDr_a,
+        this.instructions.XORr_b,
+        this.instructions.XORr_c,
+        this.instructions.XORr_d,
+        this.instructions.XORr_e,
+        this.instructions.XORr_h,
+        this.instructions.XORr_l,
+        this.instructions.XORHL,
+        this.instructions.XORr_a,
+
+        // B0
+        this.instructions.ORr_b,
+        this.instructions.ORr_c,
+        this.instructions.ORr_d,
+        this.instructions.ORr_e,
+        this.instructions.ORr_h,
+        this.instructions.ORr_l,
+        this.instructions.ORHL,
+        this.instructions.ORr_a,
+        this.instructions.CPr_b,
+        this.instructions.CPr_c,
+        this.instructions.CPr_d,
+        this.instructions.CPr_e,
+        this.instructions.CPr_h,
+        this.instructions.CPr_l,
+        this.instructions.CPHL,
+        this.instructions.CPr_a,
+
+        // C0
+        this.instructions.RETNZ,
+        this.instructions.POPBC,
+        this.instructions.JPNZnn,
+        this.instructions.JPnn,
+        this.instructions.CALLNZnn,
+        this.instructions.PUSHBC,
+        this.instructions.ADDn,
+        this.instructions.RST00,
+        this.instructions.RETZ,
+        this.instructions.RET,
+        this.instructions.JPZnn,
+        this.instructions.MAPcb,
+        this.instructions.CALLZnn,
+        this.instructions.CALLnn,
+        this.instructions.ADCn,
+        this.instructions.RST08,
+
+        // D0
+        this.instructions.RETNC,
+        this.instructions.POPDE,
+        this.instructions.JPNCnn,
+        this.instructions.XX,
+        this.instructions.CALLNCnn,
+        this.instructions.PUSHDE,
+        this.instructions.SUBn,
+        this.instructions.RST10,
+        this.instructions.RETC,
+        this.instructions.RETI,
+        this.instructions.JPCnn,
+        this.instructions.XX,
+        this.instructions.CALLCnn,
+        this.instructions.XX,
+        this.instructions.SBCn,
+        this.instructions.RST18,
+
+        // E0
+        this.instructions.LDIOnA,
+        this.instructions.POPHL,
+        this.instructions.LDIOCA,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.PUSHHL,
+        this.instructions.ANDn,
+        this.instructions.RST20,
+        this.instructions.ADDSPn,
+        this.instructions.JPHL,
+        this.instructions.LDmmA,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.ORn,
+        this.instructions.RST28,
+
+        // F0
+        this.instructions.LDAIOn,
+        this.instructions.POPAF,
+        this.instructions.LDAIOC,
+        this.instructions.DI,
+        this.instructions.XX,
+        this.instructions.PUSHAF,
+        this.instructions.XORn,
+        this.instructions.RST30,
+        this.instructions.LDHLSPn,
+        this.instructions.XX,
+        this.instructions.LDAmm,
+        this.instructions.EI,
+        this.instructions.XX,
+        this.instructions.XX,
+        this.instructions.CPn,
+        this.instructions.RST38
       ];
     },
 
     execute() {
       for (;;) {
+        this.r.R = (this.r.R + 1) & 127;
+
         const op = this.mmu.rb(this.r.PC);
         this.r.PC += 1;
 
         this.pushDataState();
 
-        this.instructions[op]();
+        this.map[op]();
         this.r.PC &= 0xFFFF;
 
         this.c.m += this.r.M;
         this.c.t += this.r.T;
+
+        if (this.mmu.inBios && this.r.PC === 0x0100) this.mmu.inBios = 0;
       }
     },
 
@@ -439,6 +730,9 @@ export default function CPU() {
       this.r = { ...initial };
       this.c.m = 0;
       this.c.t = 0;
+      this.halt = 0;
+      this.stop = 0;
+      this.r.IME = 1;
     },
 
     /* Helper functions */
@@ -463,7 +757,7 @@ export default function CPU() {
     },
 
     /* Instruction implementation */
-    ops: {
+    instructions: {
       LDrr_bb() {
         this.r.B = this.r.B;
         this.mn(1);
@@ -930,56 +1224,56 @@ export default function CPU() {
       /* Data processing */
       ADDr_b() {
         this.r.A += this.r.B;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDr_c() {
         this.r.A += this.r.C;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDr_d() {
         this.r.A += this.r.D;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDr_e() {
         this.r.A += this.r.E;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDr_h() {
         this.r.A += this.r.H;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDr_l() {
         this.r.A += this.r.L;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDr_a() {
         this.r.A += this.r.A;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       ADDHL() {
         this.r.A += this.mmu.rb((this.r.H << 8) + this.r.L);
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -987,7 +1281,7 @@ export default function CPU() {
       ADDn() {
         this.r.A += this.mmu.rb(this.r.PC);
         this.r.PC += 1;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1039,7 +1333,7 @@ export default function CPU() {
       ADCr_b() {
         this.r.A += this.r.B;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1047,7 +1341,7 @@ export default function CPU() {
       ADCr_c() {
         this.r.A += this.r.C;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1055,7 +1349,7 @@ export default function CPU() {
       ADCr_d() {
         this.r.A += this.r.D;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1063,7 +1357,7 @@ export default function CPU() {
       ADCr_e() {
         this.r.A += this.r.E;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1071,7 +1365,7 @@ export default function CPU() {
       ADCr_h() {
         this.r.A += this.r.H;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1079,7 +1373,7 @@ export default function CPU() {
       ADCr_l() {
         this.r.A += this.r.L;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1087,7 +1381,7 @@ export default function CPU() {
       ADCr_a() {
         this.r.A += this.r.A;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1095,7 +1389,7 @@ export default function CPU() {
       ADCHL() {
         this.r.A += this.mmu.rb((this.r.H << 8) + this.r.L);
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1104,7 +1398,7 @@ export default function CPU() {
         this.r.A += this.mmu.rb(this.r.PC);
         this.r.PC += 1;
         this.r.A += (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         if (this.r.A > 255) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1112,56 +1406,56 @@ export default function CPU() {
 
       SUBr_b() {
         this.r.A -= this.r.B;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBr_c() {
         this.r.A -= this.r.C;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBr_d() {
         this.r.A -= this.r.D;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBr_e() {
         this.r.A -= this.r.E;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBr_h() {
         this.r.A -= this.r.H;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBr_l() {
         this.r.A -= this.r.L;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBr_a() {
         this.r.A -= this.r.A;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
       },
       SUBHL() {
         this.r.A -= this.mmu.rb((this.r.H << 8) + this.r.L);
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1169,7 +1463,7 @@ export default function CPU() {
       SUBn() {
         this.r.A -= this.mmu.rb(this.r.PC);
         this.r.PC += 1;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1178,7 +1472,7 @@ export default function CPU() {
       SBCr_b() {
         this.r.A -= this.r.B;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1186,7 +1480,7 @@ export default function CPU() {
       SBCr_c() {
         this.r.A -= this.r.C;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1194,7 +1488,7 @@ export default function CPU() {
       SBCr_d() {
         this.r.A -= this.r.D;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1202,7 +1496,7 @@ export default function CPU() {
       SBCr_e() {
         this.r.A -= this.r.E;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1210,7 +1504,7 @@ export default function CPU() {
       SBCr_h() {
         this.r.A -= this.r.H;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1218,7 +1512,7 @@ export default function CPU() {
       SBCr_l() {
         this.r.A -= this.r.L;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1226,7 +1520,7 @@ export default function CPU() {
       SBCr_a() {
         this.r.A -= this.r.A;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(1);
@@ -1234,7 +1528,7 @@ export default function CPU() {
       SBCHL() {
         this.r.A -= this.mmu.rb((this.r.H << 8) + this.r.L);
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1243,7 +1537,7 @@ export default function CPU() {
         this.r.A -= this.mmu.rb(this.r.PC);
         this.r.PC += 1;
         this.r.A -= (this.r.F & 0x10) ? 1 : 0;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
@@ -1252,7 +1546,7 @@ export default function CPU() {
       CPr_b() {
         let i = this.r.A;
         i -= this.r.B;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1260,7 +1554,7 @@ export default function CPU() {
       CPr_c() {
         let i = this.r.A;
         i -= this.r.C;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1268,7 +1562,7 @@ export default function CPU() {
       CPr_d() {
         let i = this.r.A;
         i -= this.r.D;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1276,7 +1570,7 @@ export default function CPU() {
       CPr_e() {
         let i = this.r.A;
         i -= this.r.E;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1284,7 +1578,7 @@ export default function CPU() {
       CPr_h() {
         let i = this.r.A;
         i -= this.r.H;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1292,7 +1586,7 @@ export default function CPU() {
       CPr_l() {
         let i = this.r.A;
         i -= this.r.L;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1300,7 +1594,7 @@ export default function CPU() {
       CPr_a() {
         let i = this.r.A;
         i -= this.r.A;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(1);
@@ -1308,7 +1602,7 @@ export default function CPU() {
       CPHL() {
         let i = this.r.A;
         i -= this.mmu.rb((this.r.H << 8) + this.r.L);
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(2);
@@ -1317,7 +1611,7 @@ export default function CPU() {
         let i = this.r.A;
         i -= this.mmu.rb(this.r.PC);
         this.r.PC += 1;
-        this.ops.fz(i, 1);
+        this.instructions.fz(i, 1);
         if (i < 0) this.r.F |= 0x10;
         i &= 255;
         this.mn(2);
@@ -1326,268 +1620,268 @@ export default function CPU() {
       ANDr_b() {
         this.r.A &= this.r.B;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDr_c() {
         this.r.A &= this.r.C;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDr_d() {
         this.r.A &= this.r.D;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDr_e() {
         this.r.A &= this.r.E;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDr_h() {
         this.r.A &= this.r.H;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDr_l() {
         this.r.A &= this.r.L;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDr_a() {
         this.r.A &= this.r.A;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ANDHL() {
         this.r.A &= this.mmu.rb((this.r.H << 8) + this.r.L);
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(2);
       },
       ANDn() {
         this.r.A &= this.mmu.rb(this.r.PC);
         this.r.PC += 1;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(2);
       },
 
       ORr_b() {
         this.r.A |= this.r.B;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORr_c() {
         this.r.A |= this.r.C;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORr_d() {
         this.r.A |= this.r.D;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORr_e() {
         this.r.A |= this.r.E;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORr_h() {
         this.r.A |= this.r.H;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORr_l() {
         this.r.A |= this.r.L;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORr_a() {
         this.r.A |= this.r.A;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       ORHL() {
         this.r.A |= this.mmu.rb((this.r.H << 8) + this.r.L);
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(2);
       },
       ORn() {
         this.r.A |= this.mmu.rb(this.r.PC);
         this.r.PC += 1;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(2);
       },
 
       XORr_b() {
         this.r.A ^= this.r.B;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORr_c() {
         this.r.A ^= this.r.C;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORr_d() {
         this.r.A ^= this.r.D;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORr_e() {
         this.r.A ^= this.r.E;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORr_h() {
         this.r.A ^= this.r.H;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORr_l() {
         this.r.A ^= this.r.L;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORr_a() {
         this.r.A ^= this.r.A;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       XORHL() {
         this.r.A ^= this.mmu.rb((this.r.H << 8) + this.r.L);
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(2);
       },
       XORn() {
         this.r.A ^= this.mmu.rb(this.r.PC);
         this.r.PC += 1;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(2);
       },
 
       INCr_b() {
         this.r.B += 1;
         this.r.B &= 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.mn(1);
       },
       INCr_c() {
         this.r.C += 1;
         this.r.C &= 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.mn(1);
       },
       INCr_d() {
         this.r.D += 1;
         this.r.D &= 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.mn(1);
       },
       INCr_e() {
         this.r.E += 1;
         this.r.E &= 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.mn(1);
       },
       INCr_h() {
         this.r.H += 1;
         this.r.H &= 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.mn(1);
       },
       INCr_l() {
         this.r.L += 1;
         this.r.L &= 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.mn(1);
       },
       INCr_a() {
         this.r.A += 1;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       INCHLm() {
         let i = this.mmu.rb((this.r.H << 8) + this.r.L) + 1;
         i &= 255;
         this.mmu.wb((this.r.H << 8) + this.r.L, i);
-        this.ops.fz(i);
+        this.instructions.fz(i);
         this.mn(3);
       },
 
       DECr_b() {
         this.r.B -= 1;
         this.r.B &= 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.mn(1);
       },
       DECr_c() {
         this.r.C -= 1;
         this.r.C &= 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.mn(1);
       },
       DECr_d() {
         this.r.D -= 1;
         this.r.D &= 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.mn(1);
       },
       DECr_e() {
         this.r.E -= 1;
         this.r.E &= 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.mn(1);
       },
       DECr_h() {
         this.r.H -= 1;
         this.r.H &= 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.mn(1);
       },
       DECr_l() {
         this.r.L -= 1;
         this.r.L &= 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.mn(1);
       },
       DECr_a() {
         this.r.A -= 1;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.mn(1);
       },
       DECHLm() {
         let i = this.mmu.rb((this.r.H << 8) + this.r.L) - 1;
         i &= 255;
         this.mmu.wb((this.r.H << 8) + this.r.L, i);
-        this.ops.fz(i);
+        this.instructions.fz(i);
         this.mn(3);
       },
 
@@ -1633,266 +1927,266 @@ export default function CPU() {
 
       /* -= 1- Bit manipulation  -= 1-*/
       BIT0b() {
-        this.ops.fz(this.r.B & 0x01);
+        this.instructions.fz(this.r.B & 0x01);
         this.mn(2);
       },
       BIT0c() {
-        this.ops.fz(this.r.C & 0x01);
+        this.instructions.fz(this.r.C & 0x01);
         this.mn(2);
       },
       BIT0d() {
-        this.ops.fz(this.r.D & 0x01);
+        this.instructions.fz(this.r.D & 0x01);
         this.mn(2);
       },
       BIT0e() {
-        this.ops.fz(this.r.E & 0x01);
+        this.instructions.fz(this.r.E & 0x01);
         this.mn(2);
       },
       BIT0h() {
-        this.ops.fz(this.r.H & 0x01);
+        this.instructions.fz(this.r.H & 0x01);
         this.mn(2);
       },
       BIT0l() {
-        this.ops.fz(this.r.L & 0x01);
+        this.instructions.fz(this.r.L & 0x01);
         this.mn(2);
       },
       BIT0a() {
-        this.ops.fz(this.r.A & 0x01);
+        this.instructions.fz(this.r.A & 0x01);
         this.mn(2);
       },
       BIT0m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x01);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x01);
         this.mn(3);
       },
 
       BIT1b() {
-        this.ops.fz(this.r.B & 0x02);
+        this.instructions.fz(this.r.B & 0x02);
         this.mn(2);
       },
       BIT1c() {
-        this.ops.fz(this.r.C & 0x02);
+        this.instructions.fz(this.r.C & 0x02);
         this.mn(2);
       },
       BIT1d() {
-        this.ops.fz(this.r.D & 0x02);
+        this.instructions.fz(this.r.D & 0x02);
         this.mn(2);
       },
       BIT1e() {
-        this.ops.fz(this.r.E & 0x02);
+        this.instructions.fz(this.r.E & 0x02);
         this.mn(2);
       },
       BIT1h() {
-        this.ops.fz(this.r.H & 0x02);
+        this.instructions.fz(this.r.H & 0x02);
         this.mn(2);
       },
       BIT1l() {
-        this.ops.fz(this.r.L & 0x02);
+        this.instructions.fz(this.r.L & 0x02);
         this.mn(2);
       },
       BIT1a() {
-        this.ops.fz(this.r.A & 0x02);
+        this.instructions.fz(this.r.A & 0x02);
         this.mn(2);
       },
       BIT1m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x02);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x02);
         this.mn(3);
       },
 
       BIT2b() {
-        this.ops.fz(this.r.B & 0x04);
+        this.instructions.fz(this.r.B & 0x04);
         this.mn(2);
       },
       BIT2c() {
-        this.ops.fz(this.r.C & 0x04);
+        this.instructions.fz(this.r.C & 0x04);
         this.mn(2);
       },
       BIT2d() {
-        this.ops.fz(this.r.D & 0x04);
+        this.instructions.fz(this.r.D & 0x04);
         this.mn(2);
       },
       BIT2e() {
-        this.ops.fz(this.r.E & 0x04);
+        this.instructions.fz(this.r.E & 0x04);
         this.mn(2);
       },
       BIT2h() {
-        this.ops.fz(this.r.H & 0x04);
+        this.instructions.fz(this.r.H & 0x04);
         this.mn(2);
       },
       BIT2l() {
-        this.ops.fz(this.r.L & 0x04);
+        this.instructions.fz(this.r.L & 0x04);
         this.mn(2);
       },
       BIT2a() {
-        this.ops.fz(this.r.A & 0x04);
+        this.instructions.fz(this.r.A & 0x04);
         this.mn(2);
       },
       BIT2m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x04);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x04);
         this.mn(3);
       },
 
       BIT3b() {
-        this.ops.fz(this.r.B & 0x08);
+        this.instructions.fz(this.r.B & 0x08);
         this.mn(2);
       },
       BIT3c() {
-        this.ops.fz(this.r.C & 0x08);
+        this.instructions.fz(this.r.C & 0x08);
         this.mn(2);
       },
       BIT3d() {
-        this.ops.fz(this.r.D & 0x08);
+        this.instructions.fz(this.r.D & 0x08);
         this.mn(2);
       },
       BIT3e() {
-        this.ops.fz(this.r.E & 0x08);
+        this.instructions.fz(this.r.E & 0x08);
         this.mn(2);
       },
       BIT3h() {
-        this.ops.fz(this.r.H & 0x08);
+        this.instructions.fz(this.r.H & 0x08);
         this.mn(2);
       },
       BIT3l() {
-        this.ops.fz(this.r.L & 0x08);
+        this.instructions.fz(this.r.L & 0x08);
         this.mn(2);
       },
       BIT3a() {
-        this.ops.fz(this.r.A & 0x08);
+        this.instructions.fz(this.r.A & 0x08);
         this.mn(2);
       },
       BIT3m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x08);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x08);
         this.mn(3);
       },
 
       BIT4b() {
-        this.ops.fz(this.r.B & 0x10);
+        this.instructions.fz(this.r.B & 0x10);
         this.mn(2);
       },
       BIT4c() {
-        this.ops.fz(this.r.C & 0x10);
+        this.instructions.fz(this.r.C & 0x10);
         this.mn(2);
       },
       BIT4d() {
-        this.ops.fz(this.r.D & 0x10);
+        this.instructions.fz(this.r.D & 0x10);
         this.mn(2);
       },
       BIT4e() {
-        this.ops.fz(this.r.E & 0x10);
+        this.instructions.fz(this.r.E & 0x10);
         this.mn(2);
       },
       BIT4h() {
-        this.ops.fz(this.r.H & 0x10);
+        this.instructions.fz(this.r.H & 0x10);
         this.mn(2);
       },
       BIT4l() {
-        this.ops.fz(this.r.L & 0x10);
+        this.instructions.fz(this.r.L & 0x10);
         this.mn(2);
       },
       BIT4a() {
-        this.ops.fz(this.r.A & 0x10);
+        this.instructions.fz(this.r.A & 0x10);
         this.mn(2);
       },
       BIT4m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x10);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x10);
         this.mn(3);
       },
 
       BIT5b() {
-        this.ops.fz(this.r.B & 0x20);
+        this.instructions.fz(this.r.B & 0x20);
         this.mn(2);
       },
       BIT5c() {
-        this.ops.fz(this.r.C & 0x20);
+        this.instructions.fz(this.r.C & 0x20);
         this.mn(2);
       },
       BIT5d() {
-        this.ops.fz(this.r.D & 0x20);
+        this.instructions.fz(this.r.D & 0x20);
         this.mn(2);
       },
       BIT5e() {
-        this.ops.fz(this.r.E & 0x20);
+        this.instructions.fz(this.r.E & 0x20);
         this.mn(2);
       },
       BIT5h() {
-        this.ops.fz(this.r.H & 0x20);
+        this.instructions.fz(this.r.H & 0x20);
         this.mn(2);
       },
       BIT5l() {
-        this.ops.fz(this.r.L & 0x20);
+        this.instructions.fz(this.r.L & 0x20);
         this.mn(2);
       },
       BIT5a() {
-        this.ops.fz(this.r.A & 0x20);
+        this.instructions.fz(this.r.A & 0x20);
         this.mn(2);
       },
       BIT5m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x20);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x20);
         this.mn(3);
       },
 
       BIT6b() {
-        this.ops.fz(this.r.B & 0x40);
+        this.instructions.fz(this.r.B & 0x40);
         this.mn(2);
       },
       BIT6c() {
-        this.ops.fz(this.r.C & 0x40);
+        this.instructions.fz(this.r.C & 0x40);
         this.mn(2);
       },
       BIT6d() {
-        this.ops.fz(this.r.D & 0x40);
+        this.instructions.fz(this.r.D & 0x40);
         this.mn(2);
       },
       BIT6e() {
-        this.ops.fz(this.r.E & 0x40);
+        this.instructions.fz(this.r.E & 0x40);
         this.mn(2);
       },
       BIT6h() {
-        this.ops.fz(this.r.H & 0x40);
+        this.instructions.fz(this.r.H & 0x40);
         this.mn(2);
       },
       BIT6l() {
-        this.ops.fz(this.r.L & 0x40);
+        this.instructions.fz(this.r.L & 0x40);
         this.mn(2);
       },
       BIT6a() {
-        this.ops.fz(this.r.A & 0x40);
+        this.instructions.fz(this.r.A & 0x40);
         this.mn(2);
       },
       BIT6m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x40);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x40);
         this.mn(3);
       },
 
       BIT7b() {
-        this.ops.fz(this.r.B & 0x80);
+        this.instructions.fz(this.r.B & 0x80);
         this.mn(2);
       },
       BIT7c() {
-        this.ops.fz(this.r.C & 0x80);
+        this.instructions.fz(this.r.C & 0x80);
         this.mn(2);
       },
       BIT7d() {
-        this.ops.fz(this.r.D & 0x80);
+        this.instructions.fz(this.r.D & 0x80);
         this.mn(2);
       },
       BIT7e() {
-        this.ops.fz(this.r.E & 0x80);
+        this.instructions.fz(this.r.E & 0x80);
         this.mn(2);
       },
       BIT7h() {
-        this.ops.fz(this.r.H & 0x80);
+        this.instructions.fz(this.r.H & 0x80);
         this.mn(2);
       },
       BIT7l() {
-        this.ops.fz(this.r.L & 0x80);
+        this.instructions.fz(this.r.L & 0x80);
         this.mn(2);
       },
       BIT7a() {
-        this.ops.fz(this.r.A & 0x80);
+        this.instructions.fz(this.r.A & 0x80);
         this.mn(2);
       },
       BIT7m() {
-        this.ops.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x80);
+        this.instructions.fz(this.mmu.rb((this.r.H << 8) + this.r.L) & 0x80);
         this.mn(3);
       },
 
@@ -1934,7 +2228,7 @@ export default function CPU() {
         const co = this.r.B & 0x80 ? 0x10 : 0;
         this.r.B = (this.r.B << 1) + ci;
         this.r.B &= 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1943,7 +2237,7 @@ export default function CPU() {
         const co = this.r.C & 0x80 ? 0x10 : 0;
         this.r.C = (this.r.C << 1) + ci;
         this.r.C &= 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1952,7 +2246,7 @@ export default function CPU() {
         const co = this.r.D & 0x80 ? 0x10 : 0;
         this.r.D = (this.r.D << 1) + ci;
         this.r.D &= 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1961,7 +2255,7 @@ export default function CPU() {
         const co = this.r.E & 0x80 ? 0x10 : 0;
         this.r.E = (this.r.E << 1) + ci;
         this.r.E &= 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1970,7 +2264,7 @@ export default function CPU() {
         const co = this.r.H & 0x80 ? 0x10 : 0;
         this.r.H = (this.r.H << 1) + ci;
         this.r.H &= 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1979,7 +2273,7 @@ export default function CPU() {
         const co = this.r.L & 0x80 ? 0x10 : 0;
         this.r.L = (this.r.L << 1) + ci;
         this.r.L &= 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1988,7 +2282,7 @@ export default function CPU() {
         const co = this.r.A & 0x80 ? 0x10 : 0;
         this.r.A = (this.r.A << 1) + ci;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -1998,7 +2292,7 @@ export default function CPU() {
         const co = i & 0x80 ? 0x10 : 0;
         i = (i << 1) + ci;
         i &= 255;
-        this.ops.fz(i);
+        this.instructions.fz(i);
         this.mmu.wb((this.r.H << 8) + this.r.L, i);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(4);
@@ -2009,7 +2303,7 @@ export default function CPU() {
         const co = this.r.B & 0x80 ? 0x10 : 0;
         this.r.B = (this.r.B << 1) + ci;
         this.r.B &= 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2018,7 +2312,7 @@ export default function CPU() {
         const co = this.r.C & 0x80 ? 0x10 : 0;
         this.r.C = (this.r.C << 1) + ci;
         this.r.C &= 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2027,7 +2321,7 @@ export default function CPU() {
         const co = this.r.D & 0x80 ? 0x10 : 0;
         this.r.D = (this.r.D << 1) + ci;
         this.r.D &= 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2036,7 +2330,7 @@ export default function CPU() {
         const co = this.r.E & 0x80 ? 0x10 : 0;
         this.r.E = (this.r.E << 1) + ci;
         this.r.E &= 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2045,7 +2339,7 @@ export default function CPU() {
         const co = this.r.H & 0x80 ? 0x10 : 0;
         this.r.H = (this.r.H << 1) + ci;
         this.r.H &= 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2054,7 +2348,7 @@ export default function CPU() {
         const co = this.r.L & 0x80 ? 0x10 : 0;
         this.r.L = (this.r.L << 1) + ci;
         this.r.L &= 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2063,7 +2357,7 @@ export default function CPU() {
         const co = this.r.A & 0x80 ? 0x10 : 0;
         this.r.A = (this.r.A << 1) + ci;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2073,7 +2367,7 @@ export default function CPU() {
         const co = i & 0x80 ? 0x10 : 0;
         i = (i << 1) + ci;
         i &= 255;
-        this.ops.fz(i);
+        this.instructions.fz(i);
         this.mmu.wb((this.r.H << 8) + this.r.L, i);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(4);
@@ -2084,7 +2378,7 @@ export default function CPU() {
         const co = this.r.B & 1 ? 0x10 : 0;
         this.r.B = (this.r.B >> 1) + ci;
         this.r.B &= 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2093,7 +2387,7 @@ export default function CPU() {
         const co = this.r.C & 1 ? 0x10 : 0;
         this.r.C = (this.r.C >> 1) + ci;
         this.r.C &= 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2102,7 +2396,7 @@ export default function CPU() {
         const co = this.r.D & 1 ? 0x10 : 0;
         this.r.D = (this.r.D >> 1) + ci;
         this.r.D &= 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2111,7 +2405,7 @@ export default function CPU() {
         const co = this.r.E & 1 ? 0x10 : 0;
         this.r.E = (this.r.E >> 1) + ci;
         this.r.E &= 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2120,7 +2414,7 @@ export default function CPU() {
         const co = this.r.H & 1 ? 0x10 : 0;
         this.r.H = (this.r.H >> 1) + ci;
         this.r.H &= 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2129,7 +2423,7 @@ export default function CPU() {
         const co = this.r.L & 1 ? 0x10 : 0;
         this.r.L = (this.r.L >> 1) + ci;
         this.r.L &= 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2138,7 +2432,7 @@ export default function CPU() {
         const co = this.r.A & 1 ? 0x10 : 0;
         this.r.A = (this.r.A >> 1) + ci;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2149,7 +2443,7 @@ export default function CPU() {
         i = (i >> 1) + ci;
         i &= 255;
         this.mmu.wb((this.r.H << 8) + this.r.L, i);
-        this.ops.fz(i);
+        this.instructions.fz(i);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(4);
       },
@@ -2159,7 +2453,7 @@ export default function CPU() {
         const co = this.r.B & 1 ? 0x10 : 0;
         this.r.B = (this.r.B >> 1) + ci;
         this.r.B &= 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2168,7 +2462,7 @@ export default function CPU() {
         const co = this.r.C & 1 ? 0x10 : 0;
         this.r.C = (this.r.C >> 1) + ci;
         this.r.C &= 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2177,7 +2471,7 @@ export default function CPU() {
         const co = this.r.D & 1 ? 0x10 : 0;
         this.r.D = (this.r.D >> 1) + ci;
         this.r.D &= 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2186,7 +2480,7 @@ export default function CPU() {
         const co = this.r.E & 1 ? 0x10 : 0;
         this.r.E = (this.r.E >> 1) + ci;
         this.r.E &= 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2195,7 +2489,7 @@ export default function CPU() {
         const co = this.r.H & 1 ? 0x10 : 0;
         this.r.H = (this.r.H >> 1) + ci;
         this.r.H &= 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2204,7 +2498,7 @@ export default function CPU() {
         const co = this.r.L & 1 ? 0x10 : 0;
         this.r.L = (this.r.L >> 1) + ci;
         this.r.L &= 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2213,7 +2507,7 @@ export default function CPU() {
         const co = this.r.A & 1 ? 0x10 : 0;
         this.r.A = (this.r.A >> 1) + ci;
         this.r.A &= 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2224,7 +2518,7 @@ export default function CPU() {
         i = (i >> 1) + ci;
         i &= 255;
         this.mmu.wb((this.r.H << 8) + this.r.L, i);
-        this.ops.fz(i);
+        this.instructions.fz(i);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(4);
       },
@@ -2232,49 +2526,49 @@ export default function CPU() {
       SLAr_b() {
         const co = this.r.B & 0x80 ? 0x10 : 0;
         this.r.B = (this.r.B << 1) & 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLAr_c() {
         const co = this.r.C & 0x80 ? 0x10 : 0;
         this.r.C = (this.r.C << 1) & 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLAr_d() {
         const co = this.r.D & 0x80 ? 0x10 : 0;
         this.r.D = (this.r.D << 1) & 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLAr_e() {
         const co = this.r.E & 0x80 ? 0x10 : 0;
         this.r.E = (this.r.E << 1) & 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLAr_h() {
         const co = this.r.H & 0x80 ? 0x10 : 0;
         this.r.H = (this.r.H << 1) & 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLAr_l() {
         const co = this.r.L & 0x80 ? 0x10 : 0;
         this.r.L = (this.r.L << 1) & 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLAr_a() {
         const co = this.r.A & 0x80 ? 0x10 : 0;
         this.r.A = (this.r.A << 1) & 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2282,49 +2576,49 @@ export default function CPU() {
       SLLr_b() {
         const co = this.r.B & 0x80 ? 0x10 : 0;
         this.r.B = (this.r.B << 1) & 255 + 1;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLLr_c() {
         const co = this.r.C & 0x80 ? 0x10 : 0;
         this.r.C = (this.r.C << 1) & 255 + 1;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLLr_d() {
         const co = this.r.D & 0x80 ? 0x10 : 0;
         this.r.D = (this.r.D << 1) & 255 + 1;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLLr_e() {
         const co = this.r.E & 0x80 ? 0x10 : 0;
         this.r.E = (this.r.E << 1) & 255 + 1;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLLr_h() {
         const co = this.r.H & 0x80 ? 0x10 : 0;
         this.r.H = (this.r.H << 1) & 255 + 1;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLLr_l() {
         const co = this.r.L & 0x80 ? 0x10 : 0;
         this.r.L = (this.r.L << 1) & 255 + 1;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SLLr_a() {
         const co = this.r.A & 0x80 ? 0x10 : 0;
         this.r.A = (this.r.A << 1) & 255 + 1;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2333,7 +2627,7 @@ export default function CPU() {
         const ci = this.r.B & 0x80;
         const co = this.r.B & 1 ? 0x10 : 0;
         this.r.B = ((this.r.B >> 1) + ci) & 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2341,7 +2635,7 @@ export default function CPU() {
         const ci = this.r.C & 0x80;
         const co = this.r.C & 1 ? 0x10 : 0;
         this.r.C = ((this.r.C >> 1) + ci) & 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2349,7 +2643,7 @@ export default function CPU() {
         const ci = this.r.D & 0x80;
         const co = this.r.D & 1 ? 0x10 : 0;
         this.r.D = ((this.r.D >> 1) + ci) & 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2357,7 +2651,7 @@ export default function CPU() {
         const ci = this.r.E & 0x80;
         const co = this.r.E & 1 ? 0x10 : 0;
         this.r.E = ((this.r.E >> 1) + ci) & 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2365,7 +2659,7 @@ export default function CPU() {
         const ci = this.r.H & 0x80;
         const co = this.r.H & 1 ? 0x10 : 0;
         this.r.H = ((this.r.H >> 1) + ci) & 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2373,7 +2667,7 @@ export default function CPU() {
         const ci = this.r.L & 0x80;
         const co = this.r.L & 1 ? 0x10 : 0;
         this.r.L = ((this.r.L >> 1) + ci) & 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2381,7 +2675,7 @@ export default function CPU() {
         const ci = this.r.A & 0x80;
         const co = this.r.A & 1 ? 0x10 : 0;
         this.r.A = ((this.r.A >> 1) + ci) & 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
@@ -2389,61 +2683,61 @@ export default function CPU() {
       SRLr_b() {
         const co = this.r.B & 1 ? 0x10 : 0;
         this.r.B = (this.r.B >> 1) & 255;
-        this.ops.fz(this.r.B);
+        this.instructions.fz(this.r.B);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SRLr_c() {
         const co = this.r.C & 1 ? 0x10 : 0;
         this.r.C = (this.r.C >> 1) & 255;
-        this.ops.fz(this.r.C);
+        this.instructions.fz(this.r.C);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SRLr_d() {
         const co = this.r.D & 1 ? 0x10 : 0;
         this.r.D = (this.r.D >> 1) & 255;
-        this.ops.fz(this.r.D);
+        this.instructions.fz(this.r.D);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SRLr_e() {
         const co = this.r.E & 1 ? 0x10 : 0;
         this.r.E = (this.r.E >> 1) & 255;
-        this.ops.fz(this.r.E);
+        this.instructions.fz(this.r.E);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SRLr_h() {
         const co = this.r.H & 1 ? 0x10 : 0;
         this.r.H = (this.r.H >> 1) & 255;
-        this.ops.fz(this.r.H);
+        this.instructions.fz(this.r.H);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SRLr_l() {
         const co = this.r.L & 1 ? 0x10 : 0;
         this.r.L = (this.r.L >> 1) & 255;
-        this.ops.fz(this.r.L);
+        this.instructions.fz(this.r.L);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
       SRLr_a() {
         const co = this.r.A & 1 ? 0x10 : 0;
         this.r.A = (this.r.A >> 1) & 255;
-        this.ops.fz(this.r.A);
+        this.instructions.fz(this.r.A);
         this.r.F = (this.r.F & 0xEF) + co;
         this.mn(2);
       },
 
       CPL() {
         this.r.A = (~this.r.A) & 255;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         this.mn(1);
       },
       NEG() {
         this.r.A = 0 - this.r.A;
-        this.ops.fz(this.r.A, 1);
+        this.instructions.fz(this.r.A, 1);
         if (this.r.A < 0) this.r.F |= 0x10;
         this.r.A &= 255;
         this.mn(2);
